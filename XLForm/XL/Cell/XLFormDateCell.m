@@ -73,7 +73,7 @@
             XLFormRowDescriptor * datePickerRowDescriptor = [XLFormRowDescriptor formRowDescriptorWithTag:nil rowType:XLFormRowDescriptorTypeDatePicker];
             XLFormDatePickerCell * datePickerCell = (XLFormDatePickerCell *)[datePickerRowDescriptor cellForFormController:self.formViewController];
             [self setModeToDatePicker:datePickerCell.datePicker];
-            if (self.rowDescriptor.value){                
+            if (self.rowDescriptor.value){
                 [datePickerCell.datePicker setDate:self.rowDescriptor.value animated:[self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeCountDownTimerInline]];
             }
             NSAssert([datePickerCell conformsToProtocol:@protocol(XLFormInlineRowDescriptorCell)], @"inline cell must conform to XLFormInlineRowDescriptorCell");
@@ -81,11 +81,26 @@
             inlineCell.inlineRowDescriptor = self.rowDescriptor;
             
             [formSection addFormRow:datePickerRowDescriptor afterRow:self.rowDescriptor];
-            [self.formViewController ensureRowIsVisible:datePickerRowDescriptor];
+           // [self.formViewController ensureRowIsVisible:datePickerRowDescriptor];
         }
     }
     return result;
 }
+
+- (NSString *)formattedDate:(NSDate *)date
+{
+    if (self.dateFormatter){
+        return [self.dateFormatter stringFromDate:date];
+    }
+    if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeDate] || [self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeDateInline]){
+        return [NSDateFormatter localizedStringFromDate:date dateStyle:NSDateFormatterMediumStyle timeStyle:NSDateFormatterNoStyle];
+    }
+    else if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeTime] || [self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeTimeInline]){
+        return [NSDateFormatter localizedStringFromDate:date dateStyle:NSDateFormatterNoStyle timeStyle:NSDateFormatterShortStyle];
+    }
+    return [NSDateFormatter localizedStringFromDate:date dateStyle:NSDateFormatterShortStyle timeStyle:NSDateFormatterShortStyle];
+}
+
 
 -(BOOL)resignFirstResponder
 {
@@ -117,6 +132,11 @@
     self.accessoryType =  UITableViewCellAccessoryNone;
     self.editingAccessoryType =  UITableViewCellAccessoryNone;
     [self.textLabel setText:self.rowDescriptor.title];
+    if (self.configColor) {
+        self.textLabel.textColor = self.configColor;
+        self.detailTextLabel.textColor = self.configColor;
+    }
+    
     self.selectionStyle = self.rowDescriptor.isDisabled ? UITableViewCellSelectionStyleNone : UITableViewCellSelectionStyleDefault;
     self.textLabel.text = [NSString stringWithFormat:@"%@%@", self.rowDescriptor.title, self.rowDescriptor.required && self.rowDescriptor.sectionDescriptor.formDescriptor.addAsteriskToRequiredRowsTitle ? @"*" : @""];
     self.detailTextLabel.text = [self valueDisplayText];
@@ -138,7 +158,7 @@
         return [self resignFirstResponder];
     }
     return [self becomeFirstResponder];
-
+    
 }
 
 -(void)highlight
@@ -161,29 +181,29 @@
     return self.rowDescriptor.value ? [self formattedDate:self.rowDescriptor.value] : self.rowDescriptor.noValueDisplayText;
 }
 
-
-- (NSString *)formattedDate:(NSDate *)date
-{
-    if (self.rowDescriptor.valueTransformer){
-        NSAssert([self.rowDescriptor.valueTransformer isSubclassOfClass:[NSValueTransformer class]], @"valueTransformer is not a subclass of NSValueTransformer");
-        NSValueTransformer * valueTransformer = [self.rowDescriptor.valueTransformer new];
-        NSString * tranformedValue = [valueTransformer transformedValue:self.rowDescriptor.value];
-        if (tranformedValue){
-            return tranformedValue;
-        }
-    }
-    if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeDate] || [self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeDateInline]){
-        return [NSDateFormatter localizedStringFromDate:date dateStyle:NSDateFormatterMediumStyle timeStyle:NSDateFormatterNoStyle];
-    }
-    else if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeTime] || [self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeTimeInline]){
-        return [NSDateFormatter localizedStringFromDate:date dateStyle:NSDateFormatterNoStyle timeStyle:NSDateFormatterShortStyle];
-    }
-    else if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeCountDownTimer] || [self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeCountDownTimerInline]){
-        NSDateComponents *time = [[NSCalendar currentCalendar] components:NSCalendarUnitHour | NSCalendarUnitMinute fromDate:date];
-        return [NSString stringWithFormat:@"%ld%@ %ldmin", (long)[time hour], (long)[time hour] == 1 ? @"hour" : @"hours", (long)[time minute]];
-    }
-    return [NSDateFormatter localizedStringFromDate:date dateStyle:NSDateFormatterShortStyle timeStyle:NSDateFormatterShortStyle];
-}
+//
+//- (NSString *)formattedDate:(NSDate *)date
+//{
+//    if (self.rowDescriptor.valueTransformer){
+//        NSAssert([self.rowDescriptor.valueTransformer isSubclassOfClass:[NSValueTransformer class]], @"valueTransformer is not a subclass of NSValueTransformer");
+//        NSValueTransformer * valueTransformer = [self.rowDescriptor.valueTransformer new];
+//        NSString * tranformedValue = [valueTransformer transformedValue:self.rowDescriptor.value];
+//        if (tranformedValue){
+//            return tranformedValue;
+//        }
+//    }
+//    if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeDate] || [self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeDateInline]){
+//        return [NSDateFormatter localizedStringFromDate:date dateStyle:NSDateFormatterMediumStyle timeStyle:NSDateFormatterNoStyle];
+//    }
+//    else if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeTime] || [self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeTimeInline]){
+//        return [NSDateFormatter localizedStringFromDate:date dateStyle:NSDateFormatterNoStyle timeStyle:NSDateFormatterShortStyle];
+//    }
+//    else if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeCountDownTimer] || [self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeCountDownTimerInline]){
+//        NSDateComponents *time = [[NSCalendar currentCalendar] components:NSCalendarUnitHour | NSCalendarUnitMinute fromDate:date];
+//        return [NSString stringWithFormat:@"%ld%@ %ldmin", (long)[time hour], (long)[time hour] == 1 ? @"hour" : @"hours", (long)[time minute]];
+//    }
+//    return [NSDateFormatter localizedStringFromDate:date dateStyle:NSDateFormatterShortStyle timeStyle:NSDateFormatterShortStyle];
+//}
 
 -(void)setModeToDatePicker:(UIDatePicker *)datePicker
 {
@@ -227,7 +247,7 @@
 - (void)datePickerValueChanged:(UIDatePicker *)sender
 {
     self.rowDescriptor.value = sender.date;
-    [self update];
+    self.detailTextLabel.text = [self valueDisplayText];
     [self setNeedsLayout];
     
 }

@@ -37,14 +37,10 @@
 
 -(XLFormViewController *)formViewController;
 
-@end
-
-
-@protocol XLFormReturnKeyProtocol
-
-@property UIReturnKeyType returnKeyType;
-@property UIReturnKeyType nextReturnKeyType;
+@property (nonatomic, strong) UIColor *cellBackgroundColor;
+@property (nonatomic, strong) UIColor *textBackgroundColor;
 
 @end
+
 
 

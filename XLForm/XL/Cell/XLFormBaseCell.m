@@ -27,6 +27,11 @@
 
 @implementation XLFormBaseCell
 
+- (id)init
+{
+    return [self initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil];
+}
+
 - (id)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
 {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
@@ -42,15 +47,41 @@
     [self configure];
 }
 
+-(void)setRowDescriptor:(XLFormRowDescriptor *)rowDescriptor
+{
+    _rowDescriptor = rowDescriptor;
+    [self update];
+    [rowDescriptor.cellConfig enumerateKeysAndObjectsUsingBlock:^(NSString *keyPath, id value, BOOL * __unused stop) {
+        [self setValue:(value == [NSNull null]) ? nil : value forKeyPath:keyPath];
+    }];
+    if (rowDescriptor.isDisabled){
+        [rowDescriptor.cellConfigIfDisabled enumerateKeysAndObjectsUsingBlock:^(NSString *keyPath, id value, BOOL * __unused stop) {
+            [self setValue:(value == [NSNull null]) ? nil : value forKeyPath:keyPath];
+        }];
+    }
+}
+
+
 - (void)configure
 {
 }
 
 - (void)update
 {
+    if (self.cellBackgroundColor) {
+        self.backgroundColor = self.cellBackgroundColor;
+    }
+
     self.textLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     self.detailTextLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
-    self.textLabel.textColor  = self.rowDescriptor.isDisabled ? [UIColor grayColor] : [UIColor blackColor];
+    
+    if (self.textBackgroundColor) {
+        self.detailTextLabel.textColor = self.textBackgroundColor;
+        self.textLabel.textColor = self.textBackgroundColor;
+    } else {
+        self.textLabel.textColor  = self.rowDescriptor.isDisabled ? [UIColor grayColor] : [UIColor blackColor];
+    }
+   
 }
 
 -(void)highlight
@@ -65,7 +96,7 @@
 {
     id responder = self;
     while (responder){
-        if ([responder isKindOfClass:[XLFormViewController class]]){
+        if ([responder isKindOfClass:[UIViewController class]]){
             return responder;
         }
         responder = [responder nextResponder];

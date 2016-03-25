@@ -30,10 +30,10 @@
 #import "XLFormTextViewCell.h"
 
 NSString *const kFormTextViewCellPlaceholder = @"placeholder";
-NSString *const XLFormTextViewLengthPercentage = @"textViewLengthPercentage";
 
 @interface XLFormTextViewCell() <UITextViewDelegate>
-
+@property (nonatomic, assign) CGFloat rowHeight;
+@property (nonatomic, assign) BOOL textViewEditing;
 @end
 
 @implementation XLFormTextViewCell
@@ -95,6 +95,7 @@ NSString *const XLFormTextViewLengthPercentage = @"textViewLengthPercentage";
 -(void)configure
 {
     [super configure];
+    self.rowHeight = 44;
     [self setSelectionStyle:UITableViewCellSelectionStyleNone];
     [self.contentView addSubview:self.textLabel];
     [self.contentView addSubview:self.textView];
@@ -104,24 +105,32 @@ NSString *const XLFormTextViewLengthPercentage = @"textViewLengthPercentage";
     [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.textView attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeTop multiplier:1 constant:0]];
     [self.contentView addConstraint:[NSLayoutConstraint constraintWithItem:self.textView attribute:NSLayoutAttributeBottom relatedBy:NSLayoutRelationEqual toItem:self.contentView attribute:NSLayoutAttributeBottom multiplier:1 constant:0]];
     [self.contentView addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-0-[textView]-0-|" options:0 metrics:0 views:views]];
+  
 }
 
 -(void)update
 {
     [super update];
-    self.textView.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
-    self.textView.placeHolderLabel.font = self.textView.font;
-    self.textView.delegate = self;
-    self.textView.keyboardType = UIKeyboardTypeDefault;
-    self.textView.text = self.rowDescriptor.value;
-    [self.textView setEditable:!self.rowDescriptor.isDisabled];
-    self.textView.textColor  = self.rowDescriptor.isDisabled ? [UIColor grayColor] : [UIColor blackColor];
-    self.textLabel.text = ((self.rowDescriptor.required && self.rowDescriptor.title && self.rowDescriptor.sectionDescriptor.formDescriptor.addAsteriskToRequiredRowsTitle) ? [NSString stringWithFormat:@"%@*", self.rowDescriptor.title]: self.rowDescriptor.title);
+    if (!self.textViewEditing) {
+        self.textView.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+        self.textView.placeHolderLabel.font = self.textView.font;
+        self.textView.delegate = self;
+        self.textView.keyboardType = UIKeyboardTypeDefault;
+        self.textView.text = self.rowDescriptor.value;
+        [self.textView setEditable:!self.rowDescriptor.isDisabled];
+        self.textView.textColor  = self.rowDescriptor.isDisabled ? [UIColor grayColor] : [UIColor blackColor];
+        self.textLabel.text = ((self.rowDescriptor.required && self.rowDescriptor.title && self.rowDescriptor.sectionDescriptor.formDescriptor.addAsteriskToRequiredRowsTitle) ? [NSString stringWithFormat:@"%@*", self.rowDescriptor.title]: self.rowDescriptor.title);
+    }
 }
 
-+(CGFloat)formDescriptorCellHeightForRowDescriptor:(XLFormRowDescriptor *)rowDescriptor
+-(CGFloat)formDescriptorCellHeightForRowDescriptor:(XLFormRowDescriptor *)rowDescriptor
 {
-    return 110.f;
+    if ([rowDescriptor.value isKindOfClass:[NSString class]]) {
+//        self.textView.text = rowDescriptor.value;
+    }
+    CGFloat rowHeight = self.textView.contentSize.height < 44 ? 44 : self.textView.contentSize.height;
+    
+    return rowHeight;
 }
 
 -(BOOL)formDescriptorCellCanBecomeFirstResponder
@@ -156,19 +165,10 @@ NSString *const XLFormTextViewLengthPercentage = @"textViewLengthPercentage";
     }
     NSDictionary * views = @{@"label": self.textLabel, @"textView": self.textView};
     if (!self.textLabel.text || [self.textLabel.text isEqualToString:@""]){
-        [_dynamicCustomConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-[textView]-|" options:0 metrics:0 views:views]];
+        [_dynamicCustomConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-16-[textView]-16-|" options:0 metrics:0 views:views]];
     }
     else{
-        [_dynamicCustomConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-[label]-[textView]-|" options:0 metrics:0 views:views]];
-        if (self.textViewLengthPercentage) {
-            [_dynamicCustomConstraints addObject:[NSLayoutConstraint constraintWithItem:_textView
-                                                                              attribute:NSLayoutAttributeWidth
-                                                                              relatedBy:NSLayoutRelationEqual
-                                                                                 toItem:self.contentView
-                                                                              attribute:NSLayoutAttributeWidth
-                                                                             multiplier:[self.textViewLengthPercentage floatValue]
-                                                                               constant:0.0]];
-        }
+        [_dynamicCustomConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-16-[label]-[textView]-4-|" options:0 metrics:0 views:views]];
     }
     [self.contentView addConstraints:_dynamicCustomConstraints];
     [super updateConstraints];
@@ -189,6 +189,7 @@ NSString *const XLFormTextViewLengthPercentage = @"textViewLengthPercentage";
     } else {
         self.rowDescriptor.value = nil;
     }
+    self.textViewEditing = NO;
     [self.formViewController endEditing:self.rowDescriptor];
     [self.formViewController textViewDidEndEditing:textView];
 }
@@ -199,8 +200,15 @@ NSString *const XLFormTextViewLengthPercentage = @"textViewLengthPercentage";
 }
 
 -(void)textViewDidChange:(UITextView *)textView{
-    if ([self.textView.text length] > 0) {
-        self.rowDescriptor.value = self.textView.text;
+    
+    if ([textView.text length]) {
+        if (self.rowHeight != textView.contentSize.height + 5) {
+            self.rowDescriptor.value = textView.text;
+            self.rowHeight = textView.contentSize.height + 5;
+            [self.formViewController.tableView beginUpdates];
+            [self.formViewController.tableView endUpdates];
+            self.textViewEditing = YES;
+        }
     } else {
         self.rowDescriptor.value = nil;
     }

@@ -29,7 +29,7 @@
 #import "UIView+XLFormAdditions.h"
 #import "XLForm.h"
 #import "NSString+XLFormAdditions.h"
-
+#import <TSMessages/TSMessage.h>
 
 @interface XLFormRowDescriptor(_XLFormViewController)
 
@@ -55,7 +55,6 @@
 @interface XLFormViewController()
 {
     NSNumber *_oldBottomTableContentInset;
-    CGRect _keyboardFrame;
 }
 @property UITableViewStyle tableViewStyle;
 @property (nonatomic) XLFormRowNavigationAccessoryView * navigationAccessoryView;
@@ -116,13 +115,13 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
+    [TSMessage setDefaultViewController:self];
+    
+    [self.navigationController.navigationBar setTranslucent:YES];
     if (!self.tableView){
         self.tableView = [[UITableView alloc] initWithFrame:self.view.bounds
                                                       style:self.tableViewStyle];
         self.tableView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        if([self.tableView respondsToSelector:@selector(cellLayoutMarginsFollowReadableWidth)]){
-            self.tableView.cellLayoutMarginsFollowReadableWidth = NO;
-        }
     }
     if (!self.tableView.superview){
         [self.view addSubview:self.tableView];
@@ -152,8 +151,7 @@
     NSIndexPath *selected = [self.tableView indexPathForSelectedRow];
     if (selected){
         // Trigger a cell refresh
-        XLFormRowDescriptor * rowDescriptor = [self.form formRowAtIndex:selected];
-        [self updateFormRow:rowDescriptor];
+        [self tableView:self.tableView cellForRowAtIndexPath:selected];
         [self.tableView selectRowAtIndexPath:selected animated:NO scrollPosition:UITableViewScrollPositionNone];
         [self.tableView deselectRowAtIndexPath:selected animated:YES];
     }
@@ -161,21 +159,21 @@
                                              selector:@selector(contentSizeCategoryChanged:)
                                                  name:UIContentSizeCategoryDidChangeNotification
                                                object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(keyboardWillShow:)
-                                                 name:UIKeyboardWillShowNotification
-                                               object:nil];
-
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(keyboardWillHide:)
-                                                 name:UIKeyboardWillHideNotification
-                                               object:nil];
-
+//    [[NSNotificationCenter defaultCenter] addObserver:self
+//                                             selector:@selector(keyboardWillShow:)
+//                                                 name:UIKeyboardWillShowNotification
+//                                               object:nil];
+//    
+//    [[NSNotificationCenter defaultCenter] addObserver:self
+//                                             selector:@selector(keyboardWillHide:)
+//                                                 name:UIKeyboardWillHideNotification
+//                                               object:nil];
 }
 
 -(void)viewDidDisappear:(BOOL)animated
 {
     [super viewDidDisappear:animated];
+    [TSMessage dismissActiveNotification];
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:UIContentSizeCategoryDidChangeNotification
                                                   object:nil];
@@ -185,11 +183,18 @@
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:UIKeyboardWillHideNotification
                                                   object:nil];
+    
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    [TSMessage dismissActiveNotification];
 }
 
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
+    [self.tableView reloadData];
     if (self.form.assignFirstResponderOnShow) {
         self.form.assignFirstResponderOnShow = NO;
         [self.form setFirstResponder:self];
@@ -206,7 +211,7 @@
 +(NSMutableDictionary *)cellClassesForRowDescriptorTypes
 {
     static NSMutableDictionary * _cellClassesForRowDescriptorTypes;
-
+    
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         _cellClassesForRowDescriptorTypes = [@{XLFormRowDescriptorTypeText:[XLFormTextFieldCell class],
@@ -220,7 +225,6 @@
                                                XLFormRowDescriptorTypeNumber: [XLFormTextFieldCell class],
                                                XLFormRowDescriptorTypeInteger: [XLFormTextFieldCell class],
                                                XLFormRowDescriptorTypeDecimal: [XLFormTextFieldCell class],
-                                               XLFormRowDescriptorTypeZipCode: [XLFormTextFieldCell class],
                                                XLFormRowDescriptorTypeSelectorPush: [XLFormSelectorCell class],
                                                XLFormRowDescriptorTypeSelectorPopover: [XLFormSelectorCell class],
                                                XLFormRowDescriptorTypeSelectorActionSheet: [XLFormSelectorCell class],
@@ -230,7 +234,6 @@
                                                XLFormRowDescriptorTypeSelectorSegmentedControl: [XLFormSegmentedCell class],
                                                XLFormRowDescriptorTypeMultipleSelector: [XLFormSelectorCell class],
                                                XLFormRowDescriptorTypeMultipleSelectorPopover: [XLFormSelectorCell class],
-                                               XLFormRowDescriptorTypeImage: [XLFormImageCell class],
                                                XLFormRowDescriptorTypeTextView: [XLFormTextViewCell class],
                                                XLFormRowDescriptorTypeButton: [XLFormButtonCell class],
                                                XLFormRowDescriptorTypeInfo: [XLFormSelectorCell class],
@@ -259,15 +262,14 @@
 +(NSMutableDictionary *)inlineRowDescriptorTypesForRowDescriptorTypes
 {
     static NSMutableDictionary * _inlineRowDescriptorTypesForRowDescriptorTypes;
-
+    
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         _inlineRowDescriptorTypesForRowDescriptorTypes = [
                                                           @{XLFormRowDescriptorTypeSelectorPickerViewInline: XLFormRowDescriptorTypePicker,
                                                             XLFormRowDescriptorTypeDateInline: XLFormRowDescriptorTypeDatePicker,
                                                             XLFormRowDescriptorTypeDateTimeInline: XLFormRowDescriptorTypeDatePicker,
-                                                            XLFormRowDescriptorTypeTimeInline: XLFormRowDescriptorTypeDatePicker,
-                                                            XLFormRowDescriptorTypeCountDownTimerInline: XLFormRowDescriptorTypeDatePicker
+                                                            XLFormRowDescriptorTypeTimeInline: XLFormRowDescriptorTypeDatePicker
                                                             } mutableCopy];
     });
     return _inlineRowDescriptorTypesForRowDescriptorTypes;
@@ -447,50 +449,45 @@
     }
 }
 
--(void)ensureRowIsVisible:(XLFormRowDescriptor *)inlineRowDescriptor
-{
-    XLFormBaseCell * inlineCell = [inlineRowDescriptor cellForFormController:self];
-    NSIndexPath * indexOfOutOfWindowCell = [self.form indexPathOfFormRow:inlineRowDescriptor];
-    if(!inlineCell.window || (self.tableView.contentOffset.y + self.tableView.frame.size.height <= inlineCell.frame.origin.y + inlineCell.frame.size.height)){
-        [self.tableView scrollToRowAtIndexPath:indexOfOutOfWindowCell atScrollPosition:UITableViewScrollPositionBottom animated:YES];
-    }
-}
-
 #pragma mark - Methods
 
--(NSArray *)formValidationErrors
+- (NSArray *)formValidationErrors
 {
     return [self.form localValidationErrors:self];
 }
 
 -(void)showFormValidationError:(NSError *)error
 {
-#if __IPHONE_OS_VERSION_MAX_ALLOWED < 80000
-    UIAlertView * alertView = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"XLFormViewController_ValidationErrorTitle", nil)
-                                                         message:error.localizedDescription
-                                                        delegate:self
-                                               cancelButtonTitle:NSLocalizedString(@"OK", nil)
-                                               otherButtonTitles:nil];
-    [alertView show];
-#else
-    if ([UIAlertController class]){
-        UIAlertController * alertController = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"XLFormViewController_ValidationErrorTitle", nil)
-                                                                                  message:error.localizedDescription
-                                                                           preferredStyle:UIAlertControllerStyleAlert];
-        [alertController addAction:[UIAlertAction actionWithTitle:@"OK"
-                                                            style:UIAlertActionStyleDefault
-                                                          handler:nil]];
-        [self presentViewController:alertController animated:YES completion:nil];
-    }
-    else{
-        UIAlertView * alertView = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"XLFormViewController_ValidationErrorTitle", nil)
-                                                             message:error.localizedDescription
-                                                            delegate:self
-                                                   cancelButtonTitle:NSLocalizedString(@"OK", nil)
-                                                   otherButtonTitles:nil];
-        [alertView show];
-    }
-#endif
+    [TSMessage showNotificationWithTitle:NSLocalizedString(@"XLFormViewController_ValidationErrorTitle", nil)
+                                subtitle:error.localizedDescription
+                                    type:TSMessageNotificationTypeWarning];
+//    
+//#if __IPHONE_OS_VERSION_MAX_ALLOWED < 80000
+//    UIAlertView * alertView = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"XLFormViewController_ValidationErrorTitle", nil)
+//                                                         message:error.localizedDescription
+//                                                        delegate:self
+//                                               cancelButtonTitle:NSLocalizedString(@"OK", nil)
+//                                               otherButtonTitles:nil];
+//    [alertView show];
+//#else
+//    if ([UIAlertController class]){
+//        UIAlertController * alertController = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"XLFormViewController_ValidationErrorTitle", nil)
+//                                                                                  message:error.localizedDescription
+//                                                                           preferredStyle:UIAlertControllerStyleAlert];
+//        [alertController addAction:[UIAlertAction actionWithTitle:@"OK"
+//                                                            style:UIAlertActionStyleDefault
+//                                                          handler:nil]];
+//        [self presentViewController:alertController animated:YES completion:nil];
+//    }
+//    else{
+//        UIAlertView * alertView = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"XLFormViewController_ValidationErrorTitle", nil)
+//                                                             message:error.localizedDescription
+//                                                            delegate:self
+//                                                   cancelButtonTitle:NSLocalizedString(@"好的", nil)
+//                                                   otherButtonTitles:nil];
+//        [alertView show];
+//    }
+//#endif
 }
 
 -(void)performFormSelector:(SEL)selector withObject:(id)sender
@@ -511,52 +508,51 @@
     [self.tableView reloadData];
 }
 
-- (void)keyboardWillShow:(NSNotification *)notification
-{
-    UIView * firstResponderView = [self.tableView findFirstResponder];
-    UITableViewCell<XLFormDescriptorCell> * cell = [firstResponderView formDescriptorCell];
-    if (cell){
-        NSDictionary *keyboardInfo = [notification userInfo];
-        _keyboardFrame = [self.tableView.window convertRect:[keyboardInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue] toView:self.tableView.superview];
-        CGFloat newBottomInset = self.tableView.frame.origin.y + self.tableView.frame.size.height - _keyboardFrame.origin.y;
-        UIEdgeInsets tableContentInset = self.tableView.contentInset;
-        UIEdgeInsets tableScrollIndicatorInsets = self.tableView.scrollIndicatorInsets;
-        _oldBottomTableContentInset = _oldBottomTableContentInset ?: @(tableContentInset.bottom);
-        if (newBottomInset > [_oldBottomTableContentInset floatValue]){
-            tableContentInset.bottom = newBottomInset;
-            tableScrollIndicatorInsets.bottom = tableContentInset.bottom;
-            [UIView beginAnimations:nil context:nil];
-            [UIView setAnimationDuration:[keyboardInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue]];
-            [UIView setAnimationCurve:[keyboardInfo[UIKeyboardAnimationCurveUserInfoKey] intValue]];
-            self.tableView.contentInset = tableContentInset;
-            self.tableView.scrollIndicatorInsets = tableScrollIndicatorInsets;
-            NSIndexPath *selectedRow = [self.tableView indexPathForCell:cell];
-            [self.tableView scrollToRowAtIndexPath:selectedRow atScrollPosition:UITableViewScrollPositionNone animated:NO];
-            [UIView commitAnimations];
-        }
-    }
-}
-
-- (void)keyboardWillHide:(NSNotification *)notification
-{
-    UIView * firstResponderView = [self.tableView findFirstResponder];
-    UITableViewCell<XLFormDescriptorCell> * cell = [firstResponderView formDescriptorCell];
-    if (cell){
-        _keyboardFrame = CGRectZero;
-        NSDictionary *keyboardInfo = [notification userInfo];
-        UIEdgeInsets tableContentInset = self.tableView.contentInset;
-        UIEdgeInsets tableScrollIndicatorInsets = self.tableView.scrollIndicatorInsets;
-        tableContentInset.bottom = [_oldBottomTableContentInset floatValue];
-        tableScrollIndicatorInsets.bottom = tableContentInset.bottom;
-        _oldBottomTableContentInset = nil;
-        [UIView beginAnimations:nil context:nil];
-        [UIView setAnimationDuration:[keyboardInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue]];
-        [UIView setAnimationCurve:[keyboardInfo[UIKeyboardAnimationCurveUserInfoKey] intValue]];
-        self.tableView.contentInset = tableContentInset;
-        self.tableView.scrollIndicatorInsets = tableScrollIndicatorInsets;
-        [UIView commitAnimations];
-    }
-}
+//- (void)keyboardWillShow:(NSNotification *)notification
+//{
+//    UIView * firstResponderView = [self.tableView findFirstResponder];
+//    UITableViewCell<XLFormDescriptorCell> * cell = [firstResponderView formDescriptorCell];
+//    if (cell){
+//        NSDictionary *keyboardInfo = [notification userInfo];
+//        CGRect keyboardFrame = [self.tableView.window convertRect:[keyboardInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue] toView:self.tableView.superview];
+//        CGFloat newBottomInset = self.tableView.frame.origin.y + self.tableView.frame.size.height - keyboardFrame.origin.y;
+//        if (newBottomInset > 0){
+//            UIEdgeInsets tableContentInset = self.tableView.contentInset;
+//            UIEdgeInsets tableScrollIndicatorInsets = self.tableView.scrollIndicatorInsets;
+//            _oldBottomTableContentInset = _oldBottomTableContentInset ? : @(tableContentInset.bottom);
+//            tableContentInset.bottom = newBottomInset;
+//            tableScrollIndicatorInsets.bottom = tableContentInset.bottom;
+//            [UIView beginAnimations:nil context:nil];
+//            [UIView setAnimationDuration:[keyboardInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue]];
+//            [UIView setAnimationCurve:[keyboardInfo[UIKeyboardAnimationCurveUserInfoKey] intValue]];
+//            self.tableView.contentInset = tableContentInset;
+//            self.tableView.scrollIndicatorInsets = tableScrollIndicatorInsets;
+//            NSIndexPath *selectedRow = [self.tableView indexPathForCell:cell];
+//            [self.tableView scrollToRowAtIndexPath:selectedRow atScrollPosition:UITableViewScrollPositionNone animated:NO];
+//            [UIView commitAnimations];
+//        }
+//    }
+//}
+//
+//- (void)keyboardWillHide:(NSNotification *)notification
+//{
+//    UIView * firstResponderView = [self.tableView findFirstResponder];
+//    UITableViewCell<XLFormDescriptorCell> * cell = [firstResponderView formDescriptorCell];
+//    if (cell){
+//        NSDictionary *keyboardInfo = [notification userInfo];
+//        UIEdgeInsets tableContentInset = self.tableView.contentInset;
+//        UIEdgeInsets tableScrollIndicatorInsets = self.tableView.scrollIndicatorInsets;
+//        tableContentInset.bottom = [_oldBottomTableContentInset floatValue];
+//        tableScrollIndicatorInsets.bottom = tableContentInset.bottom;
+//        _oldBottomTableContentInset = nil;
+//        [UIView beginAnimations:nil context:nil];
+//        [UIView setAnimationDuration:[keyboardInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue]];
+//        [UIView setAnimationCurve:[keyboardInfo[UIKeyboardAnimationCurveUserInfoKey] intValue]];
+//        self.tableView.contentInset = tableContentInset;
+//        self.tableView.scrollIndicatorInsets = tableScrollIndicatorInsets;
+//        [UIView commitAnimations];
+//    }
+//}
 
 #pragma mark - Helpers
 
@@ -579,23 +575,9 @@
 -(XLFormBaseCell *)updateFormRow:(XLFormRowDescriptor *)formRow
 {
     XLFormBaseCell * cell = [formRow cellForFormController:self];
-    [self configureCell:cell];
-    [cell setNeedsUpdateConstraints];
+    cell.rowDescriptor = formRow;
     [cell setNeedsLayout];
     return cell;
-}
-
--(void)configureCell:(XLFormBaseCell*) cell
-{
-    [cell update];
-    [cell.rowDescriptor.cellConfig enumerateKeysAndObjectsUsingBlock:^(NSString *keyPath, id value, BOOL * __unused stop) {
-        [cell setValue:(value == [NSNull null]) ? nil : value forKeyPath:keyPath];
-    }];
-    if (cell.rowDescriptor.isDisabled){
-        [cell.rowDescriptor.cellConfigIfDisabled enumerateKeysAndObjectsUsingBlock:^(NSString *keyPath, id value, BOOL * __unused stop) {
-            [cell setValue:(value == [NSNull null]) ? nil : value forKeyPath:keyPath];
-        }];
-    }
 }
 
 #pragma mark - UITableViewDataSource
@@ -617,13 +599,7 @@
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     XLFormRowDescriptor * rowDescriptor = [self.form formRowAtIndex:indexPath];
-    return [rowDescriptor cellForFormController:self];
-}
-
--(void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    XLFormRowDescriptor * rowDescriptor = [self.form formRowAtIndex:indexPath];
-    [self updateFormRow:rowDescriptor];
+    return [self updateFormRow:rowDescriptor];
 }
 
 
@@ -670,7 +646,7 @@
         self.tableView.editing = !self.tableView.editing;
         self.tableView.editing = !self.tableView.editing;
     });
-
+    
 }
 
 -(void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath
@@ -730,17 +706,26 @@
 -(CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     XLFormRowDescriptor *rowDescriptor = [self.form formRowAtIndex:indexPath];
-    Class cellClass = [[rowDescriptor cellForFormController:self] class];
+    //XLFormBaseCell *cellClass = [rowDescriptor cellForFormController:self];
+    //Class cellClass = [[rowDescriptor cellForFormController:self] class];
+    XLFormBaseCell *cellClass = [self updateFormRow:rowDescriptor];
+   
     if ([cellClass respondsToSelector:@selector(formDescriptorCellHeightForRowDescriptor:)]){
         return [cellClass formDescriptorCellHeightForRowDescriptor:rowDescriptor];
     }
-    return self.tableView.rowHeight;
+    return 44;
 }
 
 -(CGFloat)tableView:(UITableView *)tableView estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
+//    XLFormRowDescriptor *rowDescriptor = [self.form formRowAtIndex:indexPath];
+//    Class cellClass = [[rowDescriptor cellForFormController:self] class];
+    //XLFormBaseCell *cellClass = [rowDescriptor cellForFormController:self];
+    //    Class cellClass = [[rowDescriptor cellForFormController:self] class];
+    
     XLFormRowDescriptor *rowDescriptor = [self.form formRowAtIndex:indexPath];
-    Class cellClass = [[rowDescriptor cellForFormController:self] class];
+    XLFormBaseCell *cellClass = [self updateFormRow:rowDescriptor];
+    
     if ([cellClass respondsToSelector:@selector(formDescriptorCellHeightForRowDescriptor:)]){
         return [cellClass formDescriptorCellHeightForRowDescriptor:rowDescriptor];
     }
@@ -805,7 +790,7 @@
             return [NSIndexPath indexPathForRow:proposedDestinationIndexPath.row - 1 inSection:sourceIndexPath.section];
         }
     }
-
+    
     if ((sectionDescriptor.sectionInsertMode == XLFormSectionInsertModeButton && sectionDescriptor.sectionOptions & XLFormSectionOptionCanInsert)){
         if (proposedDestinationIndexPath.row == sectionDescriptor.formRows.count - 1){
             return [NSIndexPath indexPathForRow:(sectionDescriptor.formRows.count - 2) inSection:sourceIndexPath.section];
@@ -862,17 +847,9 @@
 
 - (BOOL)textFieldShouldBeginEditing:(UITextField *)textField
 {
-    UITableViewCell<XLFormDescriptorCell>* cell = textField.formDescriptorCell;
     XLFormRowDescriptor * nextRow     = [self nextRowDescriptorForRow:textField.formDescriptorCell.rowDescriptor
                                                         withDirection:XLFormRowNavigationDirectionNext];
-    
-    
-    if ([cell conformsToProtocol:@protocol(XLFormReturnKeyProtocol)]) {
-        textField.returnKeyType = nextRow ? ((id<XLFormReturnKeyProtocol>)cell).nextReturnKeyType : ((id<XLFormReturnKeyProtocol>)cell).returnKeyType;
-    }
-    else {
-        textField.returnKeyType = nextRow ? UIReturnKeyNext : UIReturnKeyDefault;
-    }
+    textField.returnKeyType = nextRow ? UIReturnKeyNext : UIReturnKeyDefault;
     return YES;
 }
 
@@ -906,6 +883,7 @@
 
 -(void)textViewDidEndEditing:(UITextView *)textView
 {
+    
 }
 
 #pragma mark - UIScrollViewDelegate
@@ -913,10 +891,6 @@
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
 {
     //dismiss keyboard
-    if (NO == self.form.endEditingTableViewOnScroll) {
-        return;
-    }
-
     UIView * firstResponder = [self.tableView findFirstResponder];
     if ([firstResponder conformsToProtocol:@protocol(XLFormDescriptorCell)]){
         id<XLFormDescriptorCell> cell = (id<XLFormDescriptorCell>)firstResponder;
@@ -1043,4 +1017,3 @@
 }
 
 @end
-

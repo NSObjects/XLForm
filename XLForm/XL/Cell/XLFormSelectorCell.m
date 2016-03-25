@@ -141,6 +141,7 @@
     [super update];
     self.accessoryType = self.rowDescriptor.isDisabled || !([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeSelectorPush] || [self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeMultipleSelector]) ? UITableViewCellAccessoryNone : UITableViewCellAccessoryDisclosureIndicator;;
     self.editingAccessoryType = self.accessoryType;
+    [self.textLabel setText:self.rowDescriptor.title];
     self.selectionStyle = self.rowDescriptor.isDisabled || [self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeInfo] ? UITableViewCellSelectionStyleNone : UITableViewCellSelectionStyleDefault;
     self.textLabel.text = [NSString stringWithFormat:@"%@%@", self.rowDescriptor.title, self.rowDescriptor.required && self.rowDescriptor.sectionDescriptor.formDescriptor.addAsteriskToRequiredRowsTitle ? @"*" : @""];
     self.detailTextLabel.text = [self valueDisplayText];    
@@ -150,8 +151,8 @@
 {
     if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeSelectorPush] || [self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeSelectorPopover]){
         UIViewController * controllerToPresent = nil;
-        if (self.rowDescriptor.action.formSegueIdentifier){
-            [controller performSegueWithIdentifier:self.rowDescriptor.action.formSegueIdentifier sender:self.rowDescriptor];
+        if (self.rowDescriptor.action.formSegueIdenfifier){
+            [controller performSegueWithIdentifier:self.rowDescriptor.action.formSegueIdenfifier sender:self.rowDescriptor];
         }
         else if (self.rowDescriptor.action.formSegueClass){
             UIViewController * controllerToPresent = [self controllerToPresent];
@@ -248,26 +249,22 @@
         [actionSheet showInView:controller.view];
 #else
         if ([UIAlertController class]) {
-            XLFormViewController * formViewController = self.formViewController;
             UIAlertController * alertController = [UIAlertController alertControllerWithTitle:self.rowDescriptor.selectorTitle
                                                                                       message:nil
                                                                                preferredStyle:UIAlertControllerStyleActionSheet];
-            [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", nil)
+            [alertController addAction:[UIAlertAction actionWithTitle:@"Cancel"
                                                                 style:UIAlertActionStyleCancel
                                                               handler:nil]];
-            alertController.popoverPresentationController.sourceView = formViewController.tableView;
-            UIView* v = (self.detailTextLabel ?: self.textLabel) ?: self.contentView;
-            alertController.popoverPresentationController.sourceRect = [formViewController.tableView convertRect:v.frame fromView:self];
             __weak __typeof(self)weakSelf = self;
             for (id option in self.rowDescriptor.selectorOptions) {
                 [alertController addAction:[UIAlertAction actionWithTitle:[option displayText]
                                                                     style:UIAlertActionStyleDefault
                                                                   handler:^(UIAlertAction *action) {
                                                                       [weakSelf.rowDescriptor setValue:option];
-                                                                      [formViewController.tableView reloadData];
+                                                                      [weakSelf.formViewController.tableView reloadData];
                                                                   }]];
             }
-            [formViewController presentViewController:alertController animated:YES completion:nil];
+            [self.formViewController presentViewController:alertController animated:YES completion:nil];
         }
         else{
             UIActionSheet * actionSheet = [[UIActionSheet alloc] initWithTitle:self.rowDescriptor.selectorTitle
@@ -398,15 +395,7 @@
 
 - (NSString *)pickerView:(UIPickerView *)pickerView titleForRow:(NSInteger)row forComponent:(NSInteger)component
 {
-	if (self.rowDescriptor.valueTransformer){
-		NSAssert([self.rowDescriptor.valueTransformer isSubclassOfClass:[NSValueTransformer class]], @"valueTransformer is not a subclass of NSValueTransformer");
-		NSValueTransformer * valueTransformer = [self.rowDescriptor.valueTransformer new];
-		NSString * tranformedValue = [valueTransformer transformedValue:[[self.rowDescriptor.selectorOptions objectAtIndex:row] valueData]];
-		if (tranformedValue){
-			return tranformedValue;
-		}
-	}
-	return [[self.rowDescriptor.selectorOptions objectAtIndex:row] displayText];
+    return [[self.rowDescriptor.selectorOptions objectAtIndex:row] displayText];
 }
 
 - (void)pickerView:(UIPickerView *)pickerView didSelectRow:(NSInteger)row inComponent:(NSInteger)component

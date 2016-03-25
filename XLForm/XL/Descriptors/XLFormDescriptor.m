@@ -77,7 +77,6 @@ NSString * const XLValidationStatusErrorKey = @"XLValidationStatusErrorKey";
         _title = title;
         _addAsteriskToRequiredRowsTitle = NO;
         _disabled = NO;
-        _endEditingTableViewOnScroll = YES;
         _rowNavigationOptions = XLFormRowNavigationOptionEnabled;
         [self addObserver:self forKeyPath:@"formSections" options:(NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld) context:0];
     }
@@ -502,7 +501,7 @@ NSString * const XLValidationStatusErrorKey = @"XLValidationStatusErrorKey";
 {
     NSUInteger indexOfRow = [row.sectionDescriptor.formRows indexOfObject:row];
     if (indexOfRow != NSNotFound){
-        if (indexOfRow + 1 < row.sectionDescriptor.formRows.count){
+        if ([row.sectionDescriptor.formRows indexOfObject:row] + 1 < row.sectionDescriptor.formRows.count){
             return [row.sectionDescriptor.formRows objectAtIndex:++indexOfRow];
         }
         else{
@@ -526,7 +525,7 @@ NSString * const XLValidationStatusErrorKey = @"XLValidationStatusErrorKey";
 {
     NSUInteger indexOfRow = [row.sectionDescriptor.formRows indexOfObject:row];
     if (indexOfRow != NSNotFound){
-        if (indexOfRow > 0 ){
+        if ([row.sectionDescriptor.formRows indexOfObject:row] > 0 ){
             return [row.sectionDescriptor.formRows objectAtIndex:--indexOfRow];
         }
         else{

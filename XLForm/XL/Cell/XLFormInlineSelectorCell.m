@@ -54,24 +54,18 @@
         UITableViewCell<XLFormInlineRowDescriptorCell> * inlineCell = (UITableViewCell<XLFormInlineRowDescriptorCell> *)cell;
         inlineCell.inlineRowDescriptor = self.rowDescriptor;
         [self.rowDescriptor.sectionDescriptor addFormRow:inlineRowDescriptor afterRow:self.rowDescriptor];
-        [self.formViewController ensureRowIsVisible:inlineRowDescriptor];
     }
     return result;
 }
 
 -(BOOL)resignFirstResponder
 {
-    if (![self isFirstResponder]) {
-        return [super resignFirstResponder];
-    }
     NSIndexPath * selectedRowPath = [self.formViewController.form indexPathOfFormRow:self.rowDescriptor];
     NSIndexPath * nextRowPath = [NSIndexPath indexPathForRow:selectedRowPath.row + 1 inSection:selectedRowPath.section];
     XLFormRowDescriptor * nextFormRow = [self.formViewController.form formRowAtIndex:nextRowPath];
     XLFormSectionDescriptor * formSection = [self.formViewController.form.formSections objectAtIndex:nextRowPath.section];
     BOOL result = [super resignFirstResponder];
-    if (result) {
-        [formSection removeFormRow:nextFormRow];
-    }
+    [formSection removeFormRow:nextFormRow];
     return result;
 }
 
@@ -130,49 +124,7 @@
 
 -(NSString *)valueDisplayText
 {
-	if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeMultipleSelector] || [self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeMultipleSelectorPopover]){
-		if (!self.rowDescriptor.value || [self.rowDescriptor.value count] == 0){
-			return self.rowDescriptor.noValueDisplayText;
-		}
-		if (self.rowDescriptor.valueTransformer){
-			NSAssert([self.rowDescriptor.valueTransformer isSubclassOfClass:[NSValueTransformer class]], @"valueTransformer is not a subclass of NSValueTransformer");
-			NSValueTransformer * valueTransformer = [self.rowDescriptor.valueTransformer new];
-			NSString * tranformedValue = [valueTransformer transformedValue:self.rowDescriptor.value];
-			if (tranformedValue){
-				return tranformedValue;
-			}
-		}
-		NSMutableArray * descriptionArray = [NSMutableArray arrayWithCapacity:[self.rowDescriptor.value count]];
-		for (id option in self.rowDescriptor.selectorOptions) {
-			NSArray * selectedValues = self.rowDescriptor.value;
-			if ([selectedValues formIndexForItem:option] != NSNotFound){
-				if (self.rowDescriptor.valueTransformer){
-					NSAssert([self.rowDescriptor.valueTransformer isSubclassOfClass:[NSValueTransformer class]], @"valueTransformer is not a subclass of NSValueTransformer");
-					NSValueTransformer * valueTransformer = [self.rowDescriptor.valueTransformer new];
-					NSString * tranformedValue = [valueTransformer transformedValue:option];
-					if (tranformedValue){
-						[descriptionArray addObject:tranformedValue];
-					}
-				}
-				else{
-					[descriptionArray addObject:[option displayText]];
-				}
-			}
-		}
-		return [descriptionArray componentsJoinedByString:@", "];
-	}
-	if (!self.rowDescriptor.value){
-		return self.rowDescriptor.noValueDisplayText;
-	}
-	if (self.rowDescriptor.valueTransformer){
-		NSAssert([self.rowDescriptor.valueTransformer isSubclassOfClass:[NSValueTransformer class]], @"valueTransformer is not a subclass of NSValueTransformer");
-		NSValueTransformer * valueTransformer = [self.rowDescriptor.valueTransformer new];
-		NSString * tranformedValue = [valueTransformer transformedValue:self.rowDescriptor.value];
-		if (tranformedValue){
-			return tranformedValue;
-		}
-	}
-	return [self.rowDescriptor.value displayText];
+    return (self.rowDescriptor.value ? [self.rowDescriptor.value displayText] : self.rowDescriptor.noValueDisplayText);
 }
 
 

@@ -45,6 +45,10 @@ typedef void(^XLOnChangeBlock)(id __nullable oldValue,id __nullable newValue,XLF
 
 @interface XLFormRowDescriptor : NSObject
 
+- (void)setTextViewPlaceholder:(nonnull NSString *)placeholder;
+- (void)setTextFieldPlaceholder:(nonnull NSString *)placeholder;
+- (void)setTextAlignment:(NSTextAlignment)textAlignment;
+
 @property (nullable) id cellClass;
 @property (readwrite, nullable) NSString * tag;
 @property (readonly, nonnull) NSString * rowType;
@@ -71,7 +75,6 @@ typedef void(^XLOnChangeBlock)(id __nullable oldValue,id __nullable newValue,XLF
 
 +(nonnull instancetype)formRowDescriptorWithTag:(nullable NSString *)tag rowType:(nonnull NSString *)rowType;
 +(nonnull instancetype)formRowDescriptorWithTag:(nullable NSString *)tag rowType:(nonnull NSString *)rowType title:(nullable NSString *)title;
--(nonnull instancetype)initWithTag:(nullable NSString *)tag rowType:(nonnull NSString *)rowType title:(nullable NSString *)title;
 
 -(nonnull XLFormBaseCell *)cellForFormController:(nonnull XLFormViewController *)formController;
 
@@ -88,7 +91,6 @@ typedef void(^XLOnChangeBlock)(id __nullable oldValue,id __nullable newValue,XLF
 @property (nullable) NSArray * selectorOptions;
 
 @property (null_unspecified) id leftRightSelectorLeftOptionSelected;
-
 
 // =====================================
 // Deprecated
@@ -133,7 +135,7 @@ typedef void(^XLOnChangeBlock)(id __nullable oldValue,id __nullable newValue,XLF
 @end
 
 @interface XLFormAction : NSObject
-
+@property (nonnull, nonatomic, strong)  id viewControllerConfigure;
 @property (nullable, nonatomic, strong) Class viewControllerClass;
 @property (nullable, nonatomic, strong) NSString * viewControllerStoryboardId;
 @property (nullable, nonatomic, strong) NSString * viewControllerNibName;
@@ -142,8 +144,7 @@ typedef void(^XLOnChangeBlock)(id __nullable oldValue,id __nullable newValue,XLF
 
 @property (nullable, nonatomic, strong) void (^formBlock)(XLFormRowDescriptor * __nonnull sender);
 @property (nullable, nonatomic) SEL formSelector;
-@property (nullable, nonatomic, strong) NSString * formSegueIdenfifier DEPRECATED_ATTRIBUTE DEPRECATED_MSG_ATTRIBUTE("Use formSegueIdentifier instead");
-@property (nullable, nonatomic, strong) NSString * formSegueIdentifier;
+@property (nullable, nonatomic, strong) NSString * formSegueIdenfifier;
 @property (nullable, nonatomic, strong) Class formSegueClass;
 
 @end

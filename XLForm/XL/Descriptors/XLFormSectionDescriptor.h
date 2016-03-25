@@ -39,12 +39,12 @@ typedef NS_ENUM(NSUInteger, XLFormSectionInsertMode) {
 };
 
 @class XLFormDescriptor;
-
+NS_ASSUME_NONNULL_BEGIN
 @interface XLFormSectionDescriptor : NSObject
 
 @property (nonatomic, nullable) NSString * title;
 @property (nonatomic, nullable) NSString * footerTitle;
-@property (readonly, nonnull) NSMutableArray * formRows;
+@property (readonly) NSMutableArray * formRows;
 
 @property (readonly) XLFormSectionInsertMode sectionInsertMode;
 @property (readonly) XLFormSectionOptions sectionOptions;
@@ -54,20 +54,23 @@ typedef NS_ENUM(NSUInteger, XLFormSectionInsertMode) {
 
 @property (weak, null_unspecified) XLFormDescriptor * formDescriptor;
 
-@property (nonnull) id hidden;
+@property id hidden;
+
 -(BOOL)isHidden;
 
-+(nonnull instancetype)formSection;
-+(nonnull instancetype)formSectionWithTitle:(nullable NSString *)title;
-+(nonnull instancetype)formSectionWithTitle:(nullable NSString *)title multivaluedSection:(BOOL)multivaluedSection DEPRECATED_ATTRIBUTE DEPRECATED_MSG_ATTRIBUTE("Use formSectionWithTitle:sectionType: instead");
-+(nonnull instancetype)formSectionWithTitle:(nullable NSString *)title sectionOptions:(XLFormSectionOptions)sectionOptions;
-+(nonnull instancetype)formSectionWithTitle:(nullable NSString *)title sectionOptions:(XLFormSectionOptions)sectionOptions sectionInsertMode:(XLFormSectionInsertMode)sectionInsertMode;
-
++(instancetype)formSection;
++(instancetype)formSectionWithTitle:(nullable NSString *)title;
++(instancetype)formSectionWithTitle:(nullable NSString *)title multivaluedSection:(BOOL)multivaluedSection DEPRECATED_ATTRIBUTE DEPRECATED_MSG_ATTRIBUTE("Use formSectionWithTitle:sectionType: instead");
++(instancetype)formSectionWithTitle:(nullable NSString *)title sectionOptions:(XLFormSectionOptions)sectionOptions;
++(instancetype)formSectionWithTitle:(nullable NSString *)title sectionOptions:(XLFormSectionOptions)sectionOptions sectionInsertMode:(XLFormSectionInsertMode)sectionInsertMode;
 -(BOOL)isMultivaluedSection;
--(void)addFormRow:(nonnull XLFormRowDescriptor *)formRow;
--(void)addFormRow:(nonnull XLFormRowDescriptor *)formRow afterRow:(nonnull XLFormRowDescriptor *)afterRow;
--(void)addFormRow:(nonnull XLFormRowDescriptor *)formRow beforeRow:(nonnull XLFormRowDescriptor *)beforeRow;
+-(void)addFormRow:( XLFormRowDescriptor *)formRow;
+-(void)addFormRowUsingBlock:( XLFormRowDescriptor * (^)())block;
+
+-(void)addFormRow:(XLFormRowDescriptor *)formRow afterRow:(XLFormRowDescriptor *)afterRow;
+-(void)addFormRow:(XLFormRowDescriptor *)formRow beforeRow:(XLFormRowDescriptor *)beforeRow;
 -(void)removeFormRowAtIndex:(NSUInteger)index;
--(void)removeFormRow:(nonnull XLFormRowDescriptor *)formRow;
+-(void)removeFormRow:(XLFormRowDescriptor *)formRow;
 
 @end
+NS_ASSUME_NONNULL_END

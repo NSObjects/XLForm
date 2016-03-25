@@ -28,7 +28,7 @@
 
 extern NSString *const XLFormTextFieldLengthPercentage;
 
-@interface XLFormTextFieldCell : XLFormBaseCell <XLFormReturnKeyProtocol>
+@interface XLFormTextFieldCell : XLFormBaseCell
 
 @property (nonatomic, readonly) UILabel * textLabel;
 @property (nonatomic, readonly) UITextField * textField;
